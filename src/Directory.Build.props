@@ -41,4 +41,8 @@
     <Copyright>$(CopyrightMicrosoft)</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Net.Http" Version="$(SystemNetHttpVersion)" />
+  </ItemGroup>
 </Project>

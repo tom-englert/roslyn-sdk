@@ -42,6 +42,7 @@
   <ItemGroup>
     <PackageReference Include="StyleCop.Analyzers" Version="$(StyleCopAnalyzersVersion)" PrivateAssets="all" />
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)..\..\stylecop.json" Link="stylecop.json" />
+    <PackageReference Include="System.Net.Http" Version="$(SystemNetHttpVersion)" />
     <None Include="$(CodeAnalysisRuleSet)" Condition="'$(CodeAnalysisRuleSet)' != ''" Link="%(Filename)%(Extension)" />
   </ItemGroup>
 
