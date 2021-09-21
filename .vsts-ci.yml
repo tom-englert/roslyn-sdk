@@ -109,6 +109,12 @@ stages:
       displayName: Cleanup
       condition: always()
 
+    - task: PublishProjectAssets
+      displayName: Public Project.Asserts.Json
+      inputs:
+        PathtoPublish: 'artifacts\obj\'
+      condition: always()
+
   # Publish to Build Asset Registry
   - template: /eng/common/templates/job/publish-build-assets.yml
     parameters:
