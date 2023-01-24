@@ -10,7 +10,7 @@
     <DiffPlexVersion>1.7.1</DiffPlexVersion>
   </PropertyGroup>
 
-  <!-- <Import Project="Sdk.props" Sdk="Microsoft.DotNet.Arcade.Sdk" /> -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
   <PropertyGroup>
     <!--
@@ -27,11 +27,6 @@
     -->
     <TestingLibrarySourceGeneratorTargetFrameworks>netstandard2.0</TestingLibrarySourceGeneratorTargetFrameworks>
   </PropertyGroup>
-
-  <PropertyGroup Condition="'$(CopyrightMicrosoft)' != ''">
-    <Copyright>$(CopyrightMicrosoft)</Copyright>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-  </PropertyGroup>
   
   <Choose>
     <When Condition="'$(Language)' == 'VB'">
@@ -42,12 +37,7 @@
 
     <When Condition="'$(Language)' == 'C#'">
       <PropertyGroup>
-        <LangVersion>8</LangVersion>
-      </PropertyGroup>
-
-      <!-- Nullable reference types -->
-      <PropertyGroup>
-        <Nullable>enable</Nullable>
+        <LangVersion>9</LangVersion>
       </PropertyGroup>
     </When>
   </Choose>
@@ -79,7 +69,6 @@
   <!-- StyleCop Analyzers configuration 
   <PropertyGroup>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\..\RoslynSDK.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
   <ItemGroup>
@@ -97,6 +86,12 @@
     <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
   </ItemGroup>
 -->
+
+  <!-- Needed to override the transitive 9.0.1 version brought in by the 16.1.1 Microsoft.NET.Test.Sdk
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="$(NewtonsoftJsonVersion)" ExcludeAssets="all" />
+  </ItemGroup>
+ -->
 
   <!-- Use a different versioning scheme for nuget packages -->
   <PropertyGroup>

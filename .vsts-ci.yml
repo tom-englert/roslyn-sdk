@@ -16,9 +16,9 @@ trigger:
 
 stages:
 - stage: build
-  displayName: Build and Test
+  displayName: Build
   pool:
-    name: VSEngSS-MicroBuild2019-1ES
+    name: VSEngSS-MicroBuild2022-1ES
     demands:
     - cmd
 
@@ -44,7 +44,17 @@ stages:
     - task: ms-vseng.MicroBuildTasks.32f78468-e895-4f47-962c-58a699361df8.MicroBuildSwixPlugin@1
       displayName: Install Swix Plugin
 
-    - script: eng\common\CIBuild.cmd
+    - task: PowerShell@2
+      inputs:
+        targetType: 'filePath'
+        filePath: eng\common\Build.ps1
+        arguments: > # Use this to avoid newline characters in multiline string
+                -restore 
+                -build
+                -sign
+                -pack
+                -publish
+                -ci
                 -configuration $(BuildConfiguration)
                 /p:OfficialBuildId=$(Build.BuildNumber)
                 /p:VisualStudioDropName=$(VisualStudioDropName)
@@ -55,14 +65,7 @@ stages:
                 /p:DotnetPublishUsingPipelines=true
       displayName: Build
 
-    - task: PublishTestResults@1
-      displayName: Publish Test Results
-      inputs:
-        testRunner: XUnit
-        testResultsFiles: 'artifacts/TestResults/$(BuildConfiguration)/*.xml'
-        mergeTestResults: true
-        testRunTitle: 'Unit Tests'
-      condition: always()
+    - template: eng\common\templates\steps\generate-sbom.yml
 
     # Publishes setup VSIXes to a drop.
     # Note: The insertion tool looks for the display name of this task in the logs.
@@ -120,6 +123,42 @@ stages:
       queue:
         name: Hosted VS2017
 
+- stage: analysis
+  displayName: Code analysis
+  pool:
+    name: VSEngSS-MicroBuild2022-1ES
+    demands:
+    - cmd
+  jobs:
+    - job: codeql
+      displayName: CodeQL
+      timeoutInMinutes: 120
+      variables:
+        # CG is handled in the primary CI pipeline
+      - name: skipComponentGovernanceDetection
+        value: true
+        # Force CodeQL enabled so it may be run on any branch
+      - name: Codeql.Enabled
+        value: true
+        # Do not let CodeQL 3000 Extension gate scan frequency
+      - name: Codeql.Cadence
+        value: 0
+      - name: Codeql.TSAEnabled
+        value: true 
+      steps:
+        - task: UseDotNet@2
+          inputs:
+            useGlobalJson: true
+        - task: CodeQL3000Init@0
+          displayName: CodeQL Initialize
+        - script: eng\common\cibuild.cmd
+            -configuration Release
+            -prepareMachine
+            /p:Test=false
+          displayName: Windows Build
+        - task: CodeQL3000Finalize@0
+          displayName: CodeQL Finalize
+        
 - ${{ if and(ne(variables['System.TeamProject'], 'public'), notin(variables['Build.Reason'], 'PullRequest')) }}:
   - template: eng\common\templates\post-build\post-build.yml
     parameters:

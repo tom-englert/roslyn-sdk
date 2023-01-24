@@ -18,10 +18,10 @@
     <TestRunnerName>NUnit</TestRunnerName>
   </PropertyGroup>
 
-  <Import Project="Sdk.props" Sdk="Microsoft.DotNet.Arcade.Sdk" />
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
   <PropertyGroup>
-    <TestTargetFrameworks>netcoreapp3.1;net472;net46;netcoreapp1.1;netcoreapp2.0</TestTargetFrameworks>
+    <TestTargetFrameworks>netcoreapp3.1;net472</TestTargetFrameworks>
     <SourceGeneratorTestTargetFrameworks>netcoreapp3.1;net472</SourceGeneratorTestTargetFrameworks>
 
     <!-- Workaround dependencies that do not yet support netcoreapp3.1 https://github.com/dotnet/roslyn/issues/45114 -->
@@ -53,7 +53,6 @@
   <!-- StyleCop Analyzers configuration -->
   <PropertyGroup>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\..\RoslynSDK.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
   <ItemGroup>

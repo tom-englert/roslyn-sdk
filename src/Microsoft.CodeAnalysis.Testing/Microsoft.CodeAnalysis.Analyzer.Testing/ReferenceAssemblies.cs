@@ -317,6 +317,25 @@ namespace Microsoft.CodeAnalysis.Testing
 
                     PackageReaderBase packageReader;
                     var installedPath = GetInstalledPath(localPathResolver, globalPathResolver, packageToInstall);
+                    if (installedPath is { })
+                    {
+                        packageReader = new PackageFolderReader(installedPath);
+                        if (Path.GetDirectoryName(installedPath) == temporaryPackagesFolder)
+                        {
+                            // Delete the folder if it's in the temporary path and the package reader cannot read the
+                            // nuspec file.
+                            try
+                            {
+                                _ = packageReader.GetNuspecFile();
+                            }
+                            catch (PackagingException)
+                            {
+                                Directory.Delete(installedPath, recursive: true);
+                                installedPath = null;
+                            }
+                        }
+                    }
+
                     if (installedPath is null)
                     {
                         var downloadResource = await availablePackages[packageToInstall].Source.GetResourceAsync<DownloadResource>(cancellationToken);
@@ -336,16 +355,33 @@ namespace Microsoft.CodeAnalysis.Testing
                             continue;
                         }
 
-                        await PackageExtractor.ExtractPackageAsync(
+                        if (downloadResult.Status == DownloadResourceResultStatus.AvailableWithoutStream)
+                        {
+                            await PackageExtractor.ExtractPackageAsync(
 #if !NET452 && !NETSTANDARD1_5
 #pragma warning disable SA1114 // Parameter list should follow declaration
-                            downloadResult.PackageSource,
+                                downloadResult.PackageSource,
 #pragma warning restore SA1114 // Parameter list should follow declaration
 #endif
-                            downloadResult.PackageStream,
-                            localPathResolver,
-                            packageExtractionContext,
-                            cancellationToken);
+                                downloadResult.PackageReader,
+                                localPathResolver,
+                                packageExtractionContext,
+                                cancellationToken);
+                        }
+                        else
+                        {
+                            Debug.Assert(downloadResult.PackageStream != null, "PackageStream should not be null if download result status != DownloadResourceResultStatus.AvailableWithoutStream");
+                            await PackageExtractor.ExtractPackageAsync(
+#if !NET452 && !NETSTANDARD1_5
+#pragma warning disable SA1114 // Parameter list should follow declaration
+                                downloadResult.PackageSource,
+#pragma warning restore SA1114 // Parameter list should follow declaration
+#endif
+                                downloadResult.PackageStream,
+                                localPathResolver,
+                                packageExtractionContext,
+                                cancellationToken);
+                        }
 
                         installedPath = GetInstalledPath(localPathResolver, globalPathResolver, packageToInstall);
                         packageReader = downloadResult.PackageReader;
@@ -898,7 +934,7 @@ namespace Microsoft.CodeAnalysis.Testing
                         "net6.0",
                         new PackageIdentity(
                             "Microsoft.NETCore.App.Ref",
-                            "6.0.0-rc.1.21451.13"),
+                            "6.0.0"),
                         Path.Combine("ref", "net6.0"));
                 });
 
@@ -906,7 +942,7 @@ namespace Microsoft.CodeAnalysis.Testing
                 new Lazy<ReferenceAssemblies>(() =>
                     Net60.AddPackages(
                         ImmutableArray.Create(
-                            new PackageIdentity("Microsoft.WindowsDesktop.App.Ref", "6.0.0-rc.1.21451.3"))));
+                            new PackageIdentity("Microsoft.WindowsDesktop.App.Ref", "6.0.0"))));
 
             private static readonly Lazy<ReferenceAssemblies> _lazyNet60Android =
                 new Lazy<ReferenceAssemblies>(() =>
@@ -938,6 +974,29 @@ namespace Microsoft.CodeAnalysis.Testing
                         ImmutableArray.Create(
                             new PackageIdentity("Microsoft.tvOS.Ref", "15.0.100-rc.1.1534"))));
 
+            private static readonly Lazy<ReferenceAssemblies> _lazyNet70 =
+                new Lazy<ReferenceAssemblies>(() =>
+                {
+                    if (!NuGetFramework.Parse("net7.0").IsPackageBased)
+                    {
+                        // The NuGet version provided at runtime does not recognize the 'net7.0' target framework
+                        throw new NotSupportedException("The 'net7.0' target framework is not supported by this version of NuGet.");
+                    }
+
+                    return new ReferenceAssemblies(
+                        "net7.0",
+                        new PackageIdentity(
+                            "Microsoft.NETCore.App.Ref",
+                            "7.0.0-preview.7.22375.6"),
+                        Path.Combine("ref", "net7.0"));
+                });
+
+            private static readonly Lazy<ReferenceAssemblies> _lazyNet70Windows =
+                new Lazy<ReferenceAssemblies>(() =>
+                    Net70.AddPackages(
+                        ImmutableArray.Create(
+                            new PackageIdentity("Microsoft.WindowsDesktop.App.Ref", "7.0.0-preview.7.22377.1"))));
+
             public static ReferenceAssemblies Net50 => _lazyNet50.Value;
 
             public static ReferenceAssemblies Net60 => _lazyNet60.Value;
@@ -953,6 +1012,10 @@ namespace Microsoft.CodeAnalysis.Testing
             public static ReferenceAssemblies Net60MacCatalyst => _lazyNet60MacCatalyst.Value;
 
             public static ReferenceAssemblies Net60TvOS => _lazyNet60TvOS.Value;
+
+            public static ReferenceAssemblies Net70 => _lazyNet70.Value;
+
+            public static ReferenceAssemblies Net70Windows => _lazyNet70Windows.Value;
         }
 
         public static class NetStandard

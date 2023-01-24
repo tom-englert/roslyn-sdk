@@ -30,14 +30,19 @@ namespace Mustache
             foreach ((string name, string template, string hash) in rx.TemplateInfo)
             {
                 string source = SourceFileFromMustachePath(name, template, hash);
-                context.AddSource($"Mustache{name}", source);
+                context.AddSource($"Mustache{name}.g.cs", source);
             }
         }
-     
+
         static string SourceFileFromMustachePath(string name, string template, string hash)
         {
             Func<object, string> tree = HandlebarsDotNet.Handlebars.Compile(template);
-            object @object = Newtonsoft.Json.JsonConvert.DeserializeObject(hash);
+            object? @object = Newtonsoft.Json.JsonConvert.DeserializeObject(hash);
+            if (@object is null)
+            {
+                return string.Empty;
+            }
+
             string mustacheText = tree(@object);
 
             StringBuilder sb = new StringBuilder();
@@ -55,7 +60,7 @@ namespace Mustache {{
 
         public void Initialize(GeneratorInitializationContext context)
         {
-            context.RegisterForPostInitialization((pi) => pi.AddSource("Mustache_MainAttributes__", attributeSource));
+            context.RegisterForPostInitialization((pi) => pi.AddSource("Mustache_MainAttributes__.g.cs", attributeSource));
             context.RegisterForSyntaxNotifications(() => new SyntaxReceiver());
         }
 

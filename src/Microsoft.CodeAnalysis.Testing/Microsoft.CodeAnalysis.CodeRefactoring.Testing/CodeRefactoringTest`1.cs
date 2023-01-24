@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
@@ -64,6 +65,17 @@ namespace Microsoft.CodeAnalysis.Testing
         /// <returns>The <see cref="CodeRefactoringProvider"/> to be used.</returns>
         protected abstract IEnumerable<CodeRefactoringProvider> GetCodeRefactoringProviders();
 
+        /// <summary>
+        /// Creates a code refactoring context to be used for testing.
+        /// </summary>
+        /// <param name="document">Document to refactor.</param>
+        /// <param name="span">Text span within the <paramref name="document"/> to refactor.</param>
+        /// <param name="registerRefactoring">Delegate to register a <see cref="CodeAction"/> for the refactoring.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>New <see cref="CodeRefactoringContext"/>.</returns>
+        protected virtual CodeRefactoringContext CreateCodeRefactoringContext(Document document, TextSpan span, Action<CodeAction> registerRefactoring, CancellationToken cancellationToken)
+            => new CodeRefactoringContext(document, span, registerRefactoring, cancellationToken);
+
         protected override async Task RunImplAsync(CancellationToken cancellationToken)
         {
             Verify.NotEmpty($"{nameof(TestState)}.{nameof(SolutionState.Sources)}", TestState.Sources);
@@ -81,11 +93,10 @@ namespace Microsoft.CodeAnalysis.Testing
 
             await VerifyDiagnosticsAsync(new EvaluatedProjectState(testState, ReferenceAssemblies), testState.AdditionalProjects.Values.Select(additionalProject => new EvaluatedProjectState(additionalProject, ReferenceAssemblies)).ToImmutableArray(), FilterTriggerSpanResults(testState.ExpectedDiagnostics).ToArray(), Verify.PushContext("Diagnostics of test state"), cancellationToken).ConfigureAwait(false);
 
-            if (CodeActionExpected())
-            {
-                await VerifyDiagnosticsAsync(new EvaluatedProjectState(fixedState, ReferenceAssemblies), fixedState.AdditionalProjects.Values.Select(additionalProject => new EvaluatedProjectState(additionalProject, ReferenceAssemblies)).ToImmutableArray(), FilterTriggerSpanResults(fixedState.ExpectedDiagnostics).ToArray(), Verify.PushContext("Diagnostics of fixed state"), cancellationToken).ConfigureAwait(false);
-                await VerifyRefactoringAsync(testState, fixedState, GetTriggerSpanResult(testState.ExpectedDiagnostics), Verify, cancellationToken).ConfigureAwait(false);
-            }
+            Verify.True(CodeActionExpected(), $"Expected the refactoring test to specify the refactoring result in '{nameof(FixedState)}'");
+
+            await VerifyRefactoringAsync(testState, fixedState, GetTriggerSpanResult(testState.ExpectedDiagnostics), Verify, cancellationToken).ConfigureAwait(false);
+            await VerifyDiagnosticsAsync(new EvaluatedProjectState(fixedState, ReferenceAssemblies), fixedState.AdditionalProjects.Values.Select(additionalProject => new EvaluatedProjectState(additionalProject, ReferenceAssemblies)).ToImmutableArray(), FilterTriggerSpanResults(fixedState.ExpectedDiagnostics).ToArray(), Verify.PushContext("Diagnostics of fixed state"), cancellationToken).ConfigureAwait(false);
 
             static IEnumerable<DiagnosticResult> FilterTriggerSpanResults(IEnumerable<DiagnosticResult> expected)
             {
@@ -182,7 +193,9 @@ namespace Microsoft.CodeAnalysis.Testing
                 verifier.EqualOrDiff(newState.Sources[i].content.ToString(), actual.ToString(), $"content of '{newState.Sources[i].filename}' did not match. Diff shown with expected as baseline:");
                 verifier.Equal(newState.Sources[i].content.Encoding, actual.Encoding, $"encoding of '{newState.Sources[i].filename}' was expected to be '{newState.Sources[i].content.Encoding?.WebName}' but was '{actual.Encoding?.WebName}'");
                 verifier.Equal(newState.Sources[i].content.ChecksumAlgorithm, actual.ChecksumAlgorithm, $"checksum algorithm of '{newState.Sources[i].filename}' was expected to be '{newState.Sources[i].content.ChecksumAlgorithm}' but was '{actual.ChecksumAlgorithm}'");
-                verifier.Equal(newState.Sources[i].filename, updatedDocuments[i].Name, $"file name was expected to be '{newState.Sources[i].filename}' but was '{updatedDocuments[i].Name}'");
+                var (fileName, folders) = GetNameAndFoldersFromPath(newState.DefaultPrefix, newState.Sources[i].filename);
+                verifier.Equal(fileName, updatedDocuments[i].Name, $"file name was expected to be '{fileName}' but was '{updatedDocuments[i].Name}'");
+                verifier.SequenceEqual(folders, updatedDocuments[i].Folders, message: $"folders was expected to be '{string.Join("/", folders)}' but was '{string.Join("/", updatedDocuments[i].Folders)}'");
             }
 
             var updatedAdditionalDocuments = project.AdditionalDocuments.ToArray();
@@ -195,7 +208,9 @@ namespace Microsoft.CodeAnalysis.Testing
                 verifier.EqualOrDiff(newState.AdditionalFiles[i].content.ToString(), actual.ToString(), $"content of '{newState.AdditionalFiles[i].filename}' did not match. Diff shown with expected as baseline:");
                 verifier.Equal(newState.AdditionalFiles[i].content.Encoding, actual.Encoding, $"encoding of '{newState.AdditionalFiles[i].filename}' was expected to be '{newState.AdditionalFiles[i].content.Encoding?.WebName}' but was '{actual.Encoding?.WebName}'");
                 verifier.Equal(newState.AdditionalFiles[i].content.ChecksumAlgorithm, actual.ChecksumAlgorithm, $"checksum algorithm of '{newState.AdditionalFiles[i].filename}' was expected to be '{newState.AdditionalFiles[i].content.ChecksumAlgorithm}' but was '{actual.ChecksumAlgorithm}'");
-                verifier.Equal(newState.AdditionalFiles[i].filename, updatedAdditionalDocuments[i].Name, $"file name was expected to be '{newState.AdditionalFiles[i].filename}' but was '{updatedAdditionalDocuments[i].Name}'");
+                var (fileName, folders) = GetNameAndFoldersFromPath(newState.DefaultPrefix, newState.AdditionalFiles[i].filename);
+                verifier.Equal(fileName, updatedAdditionalDocuments[i].Name, $"file name was expected to be '{fileName}' but was '{updatedAdditionalDocuments[i].Name}'");
+                verifier.SequenceEqual(folders, updatedAdditionalDocuments[i].Folders, message: $"folders was expected to be '{string.Join("/", folders)}' but was '{string.Join("/", updatedAdditionalDocuments[i].Folders)}'");
             }
 
             var updatedAnalyzerConfigDocuments = project.AnalyzerConfigDocuments().ToArray();
@@ -208,7 +223,9 @@ namespace Microsoft.CodeAnalysis.Testing
                 verifier.EqualOrDiff(newState.AnalyzerConfigFiles[i].content.ToString(), actual.ToString(), $"content of '{newState.AnalyzerConfigFiles[i].filename}' did not match. Diff shown with expected as baseline:");
                 verifier.Equal(newState.AnalyzerConfigFiles[i].content.Encoding, actual.Encoding, $"encoding of '{newState.AnalyzerConfigFiles[i].filename}' was expected to be '{newState.AnalyzerConfigFiles[i].content.Encoding?.WebName}' but was '{actual.Encoding?.WebName}'");
                 verifier.Equal(newState.AnalyzerConfigFiles[i].content.ChecksumAlgorithm, actual.ChecksumAlgorithm, $"checksum algorithm of '{newState.AnalyzerConfigFiles[i].filename}' was expected to be '{newState.AnalyzerConfigFiles[i].content.ChecksumAlgorithm}' but was '{actual.ChecksumAlgorithm}'");
-                verifier.Equal(newState.AnalyzerConfigFiles[i].filename, updatedAnalyzerConfigDocuments[i].Name, $"file name was expected to be '{newState.AnalyzerConfigFiles[i].filename}' but was '{updatedAnalyzerConfigDocuments[i].Name}'");
+                var (fileName, folders) = GetNameAndFoldersFromPath(newState.DefaultPrefix, newState.AnalyzerConfigFiles[i].filename);
+                verifier.Equal(fileName, updatedAnalyzerConfigDocuments[i].Name, $"file name was expected to be '{fileName}' but was '{updatedAnalyzerConfigDocuments[i].Name}'");
+                verifier.SequenceEqual(folders, updatedAnalyzerConfigDocuments[i].Folders, message: $"folders was expected to be '{string.Join("/", folders)}' but was '{string.Join("/", updatedAnalyzerConfigDocuments[i].Folders)}'");
             }
         }
 
@@ -227,6 +244,7 @@ namespace Microsoft.CodeAnalysis.Testing
                 numberOfIterations = -numberOfIterations;
             }
 
+            ExceptionDispatchInfo? firstValidationError = null;
             var currentIteration = -1;
             bool done;
             do
@@ -239,7 +257,7 @@ namespace Microsoft.CodeAnalysis.Testing
                 }
                 catch (Exception ex)
                 {
-                    return (project, ExceptionDispatchInfo.Capture(ex));
+                    return (project, firstValidationError ?? ExceptionDispatchInfo.Capture(ex));
                 }
 
                 done = true;
@@ -251,7 +269,7 @@ namespace Microsoft.CodeAnalysis.Testing
 
                 foreach (var codeRefactoringProvider in codeRefactoringProviders)
                 {
-                    var context = new CodeRefactoringContext(triggerDocument, location.SourceSpan, actions.Add, cancellationToken);
+                    var context = CreateCodeRefactoringContext(triggerDocument, location.SourceSpan, actions.Add, cancellationToken);
                     await codeRefactoringProvider.ComputeRefactoringsAsync(context).ConfigureAwait(false);
                 }
 
@@ -262,7 +280,8 @@ namespace Microsoft.CodeAnalysis.Testing
                     anyActions = true;
 
                     var originalProjectId = project.Id;
-                    var fixedProject = await ApplyCodeActionAsync(triggerDocument.Project, actionToApply, verifier, cancellationToken).ConfigureAwait(false);
+                    var (fixedProject, currentError) = await ApplyCodeActionAsync(triggerDocument.Project, actionToApply, verifier, cancellationToken).ConfigureAwait(false);
+                    firstValidationError ??= currentError;
                     if (fixedProject != triggerDocument.Project)
                     {
                         done = false;
@@ -294,10 +313,10 @@ namespace Microsoft.CodeAnalysis.Testing
             }
             catch (Exception ex)
             {
-                return (project, ExceptionDispatchInfo.Capture(ex));
+                return (project, firstValidationError ?? ExceptionDispatchInfo.Capture(ex));
             }
 
-            return (project, null);
+            return (project, firstValidationError);
 
             async Task<Location> GetTriggerLocationAsync()
             {
