@@ -1,11 +1,17 @@
 <!-- Licensed to the .NET Foundation under one or more agreements. The .NET Foundation licenses this file to you under the MIT license. See the LICENSE file in the project root for more information. -->
 <Project>  
-  <Import Project="Sdk.props" Sdk="Microsoft.DotNet.Arcade.Sdk" />
+  <!-- <Import Project="Sdk.props" Sdk="Microsoft.DotNet.Arcade.Sdk" /> -->
 
   <PropertyGroup>
     <Features>strict</Features>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
+
+  <ItemGroup>  
+    <Compile Include="$(MSBuildThisFileDirectory)nullable.cs">
+      <Link>nullable.cs</Link>
+    </Compile>
+  </ItemGroup>  
 
   <!--
     Language specific settings
