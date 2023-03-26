@@ -1,10 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>$(SourceGeneratorTestTargetFrameworks)</TargetFrameworks>
+    <TargetFrameworks>Net6.0</TargetFrameworks>
     <RootNamespace>Microsoft.CodeAnalysis.Testing</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.5.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="4.5.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.5.0" />
     <ProjectReference Include="..\..\..\src\Microsoft.CodeAnalysis.Testing\Microsoft.CodeAnalysis.SourceGenerators.Testing\Microsoft.CodeAnalysis.SourceGenerators.Testing.csproj" />
     <ProjectReference Include="..\Microsoft.CodeAnalysis.Testing.Utilities\Microsoft.CodeAnalysis.Testing.Utilities.csproj" />
   </ItemGroup>

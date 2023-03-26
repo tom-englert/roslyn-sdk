@@ -93,7 +93,7 @@ namespace Microsoft.CodeAnalysis.Testing
         /// Sets the input source file for analyzer or code fix testing.
         /// </summary>
         /// <seealso cref="TestState"/>
-        public string TestCode
+        public string? TestCode
         {
             set
             {
@@ -167,6 +167,8 @@ namespace Microsoft.CodeAnalysis.Testing
         /// fix test setup.
         /// </summary>
         public List<Func<Solution, ProjectId, Solution>> SolutionTransforms { get; } = new List<Func<Solution, ProjectId, Solution>>();
+
+        public bool? ReportSuppressedDiagnostics { get; set; }
 
         /// <summary>
         /// Gets or sets the timeout to use when matching expected and actual diagnostics. The default value is 2
@@ -1306,7 +1308,8 @@ namespace Microsoft.CodeAnalysis.Testing
         /// <param name="cancellationToken">The <see cref="CancellationToken"/> that the task will observe.</param>
         /// <returns>A <see cref="CompilationWithAnalyzers"/> object representing the provided compilation, analyzers, and options.</returns>
         protected virtual CompilationWithAnalyzers CreateCompilationWithAnalyzers(Compilation compilation, ImmutableArray<DiagnosticAnalyzer> analyzers, AnalyzerOptions options, CancellationToken cancellationToken)
-            => compilation.WithAnalyzers(analyzers, options, cancellationToken);
+            // => compilation.WithAnalyzers(analyzers, options, cancellationToken);
+            => LightupCompilationWithAnalyzers.Create(compilation, analyzers, options, cancellationToken, ReportSuppressedDiagnostics);
 
         /// <summary>
         /// Given an array of strings as sources and a language, turn them into a <see cref="Project"/> and return the
