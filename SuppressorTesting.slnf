@@ -1,0 +1,11 @@
+{
+  "solution": {
+    "path": "Roslyn-SDK.sln",
+    "projects": [
+      "src\\Microsoft.CodeAnalysis.Testing\\Microsoft.CodeAnalysis.Analyzer.Testing\\Microsoft.CodeAnalysis.Analyzer.Testing.csproj",
+      "src\\VisualStudio.Roslyn.SDK\\AssemblyVersionGenerator\\AssemblyVersionGenerator.csproj",
+      "tests\\Microsoft.CodeAnalysis.Testing\\Microsoft.CodeAnalysis.Analyzer.Testing.UnitTests\\Microsoft.CodeAnalysis.Analyzer.Testing.UnitTests.csproj",
+      "tests\\Microsoft.CodeAnalysis.Testing\\Microsoft.CodeAnalysis.Testing.Utilities\\Microsoft.CodeAnalysis.Testing.Utilities.csproj"
+    ]
+  }
+}
