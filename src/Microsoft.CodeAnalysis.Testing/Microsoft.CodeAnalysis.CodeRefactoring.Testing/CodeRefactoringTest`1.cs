@@ -36,7 +36,7 @@ namespace Microsoft.CodeAnalysis.Testing
         /// Sets the expected output source file for code refactoring testing.
         /// </summary>
         /// <seealso cref="FixedState"/>
-        public string FixedCode
+        public string? FixedCode
         {
             set
             {

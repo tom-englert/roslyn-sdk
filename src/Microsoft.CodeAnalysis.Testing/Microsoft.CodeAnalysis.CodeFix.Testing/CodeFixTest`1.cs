@@ -47,7 +47,7 @@ namespace Microsoft.CodeAnalysis.Testing
         /// Sets the expected output source file for code fix testing.
         /// </summary>
         /// <seealso cref="FixedState"/>
-        public string FixedCode
+        public string? FixedCode
         {
             set
             {
@@ -64,7 +64,7 @@ namespace Microsoft.CodeAnalysis.Testing
         /// Sets the expected output source file after a Fix All operation is applied.
         /// </summary>
         /// <seealso cref="BatchFixedState"/>
-        public string BatchFixedCode
+        public string? BatchFixedCode
         {
             set
             {
